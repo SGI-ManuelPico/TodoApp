@@ -1,9 +1,13 @@
 from dataclasses import dataclass, field
 from typing import Generator
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text  # Added text import
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker, Session
 from functools import lru_cache
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 @dataclass
 class Database:
@@ -35,14 +39,15 @@ class Database:
         """
         return self.SessionLocal()
 
+# Move get_database() here, after Database class
 @lru_cache
 def get_database() -> Database:
     return Database(
-        host="localhost",
-        user="root",
-        password="12345678",
-        database="todoapp",
-        echo=True
+        host=os.getenv('DB_HOST', 'localhost'),
+        user=os.getenv('DB_USER', 'root'),
+        password=os.getenv('DB_PASSWORD', ''),
+        database=os.getenv('DB_NAME', 'todoapp'),
+        echo=os.getenv('DB_ECHO', 'false').lower() == 'true'
     )
 
 def get_db() -> Generator[Session, None, None]:
@@ -51,3 +56,23 @@ def get_db() -> Generator[Session, None, None]:
         yield db
     finally:
         db.close()
+
+if __name__ == "__main__":
+    db = get_database()
+    session = db.get_session()
+
+    try:
+        # Test basic connection
+        result = session.execute(text("SELECT 1"))
+        print("Database connection successful!")
+        
+        # Test connection parameters
+        result = session.execute(text("SELECT DATABASE(), USER()"))
+        database, user = result.first()
+        print(f"Connected to database: {database}")
+        print(f"Connected as user: {user}")
+        
+    except Exception as e:
+        print(f"Database connection failed: {str(e)}")
+    finally:
+        session.close()
