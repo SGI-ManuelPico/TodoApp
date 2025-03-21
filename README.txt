@@ -9,10 +9,16 @@ Estructura:
     /app/
 
     1. core → En esta se encuentran la lógica de conexión a la base de datos, autorización y seguridad.
+
     2. models → Clases del ORM para abstraer la estructura de la base de datos.
+        - Acá es clave importar relationshp para simplificar las consultas entre tablas relacionadas.
+        
     3. routes → Puntos de acceso, estas son las rutas que consume el frontend.
+
     4. schemas → Acá definimos los tipos de estrucuturas que queremeos recibir o mandar al usuario.
+
     5. crud → Operacionea CRUD sobre los modelos.
+
     6. main.py → Acá agrupamos todas las rutas para inicializar la API.
 
     /migrations/
