@@ -10,9 +10,11 @@ class Usuario(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     nombre = Column(String(50))
     password = Column(String(50))
+    area_id = Column(Integer, ForeignKey('area.id'))
 
-    # Relaciones 
-    todos = relationship('Todo', back_populates='usuario')
+    # Relaciones
+    area = relationship('Area', back_populates='usuarios')
+    todos = relationship('Todo', back_populates='usuario') 
 
 class Todo(Base):
     __tablename__ = 'todo'
@@ -24,3 +26,14 @@ class Todo(Base):
 
     # Relaciones 
     usuario = relationship('Usuario', back_populates='todos')
+
+class Area(Base):
+    __tablename__ = 'area'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    nombre = Column(String(50))
+
+    # Relaciones
+    usuarios = relationship('Usuario', back_populates='area')
+
+
