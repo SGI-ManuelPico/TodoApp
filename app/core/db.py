@@ -3,6 +3,7 @@ from typing import Generator
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker, Session
+from functools import lru_cache
 
 @dataclass
 class Database:
@@ -15,20 +16,18 @@ class Database:
     SessionLocal: sessionmaker = field(init=False)
 
     def __post_init__(self):
-        # Build the connection URL
-        connection_url = (
-            f"mysql+mysqlconnector://{self.user}:{self.password}@{self.host}/{self.database}"
-        )
-
-        # Create the engine
-        self.engine = create_engine(connection_url, echo=self.echo)
-
-        # Configure the sessionmaker
-        self.SessionLocal = sessionmaker(
-            autocommit=False,
-            autoflush=False,
-            bind=self.engine
-        )
+        try:
+            connection_url = (
+                f"mysql+mysqlconnector://{self.user}:{self.password}@{self.host}/{self.database}"
+            )
+            self.engine = create_engine(connection_url, echo=self.echo, pool_pre_ping=True)
+            self.SessionLocal = sessionmaker(
+                autocommit=False,
+                autoflush=False,
+                bind=self.engine
+            )
+        except Exception as e:
+            raise Exception(f"Database connection failed: {str(e)}")
 
     def get_session(self) -> Session:
         """
@@ -36,20 +35,18 @@ class Database:
         """
         return self.SessionLocal()
 
-db_config = Database(
-    host="localhost",
-    user="root",
-    password="12345678",
-    database="inventory",
-    echo=True
-)
+@lru_cache
+def get_database() -> Database:
+    return Database(
+        host="localhost",
+        user="root",
+        password="12345678",
+        database="todoapp",
+        echo=True
+    )
 
 def get_db() -> Generator[Session, None, None]:
-    """
-    FastAPI dependency that yields a DB session for each request,
-    and closes it when the request is done.
-    """
-    db = db_config.get_session()
+    db = get_database().get_session()
     try:
         yield db
     finally:
