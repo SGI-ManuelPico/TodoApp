@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 def crear_usuario(usuario: UsuarioCreate, db: Session) -> Usuario:
     # Verificar si el email ya está registrado
     if db.query(Usuario).filter(Usuario.email == usuario.email).first():
-        raise ValueError("Email already registered")
+        raise ValueError("Este email ya está registrado")
         
     try:
         usuario_data = usuario.model_dump()
@@ -19,4 +19,4 @@ def crear_usuario(usuario: UsuarioCreate, db: Session) -> Usuario:
         return db_usuario
     except Exception as e:
         db.rollback()
-        raise ValueError(f"Error creating user: {str(e)}")
+        raise ValueError(f"Error creando el usuario: {str(e)}")

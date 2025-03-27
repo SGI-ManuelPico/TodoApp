@@ -7,8 +7,11 @@ class UsuarioBase(BaseModel):
     email: EmailStr
     area_id: int
 
-class UsuarioCreate(UsuarioBase):
+class UsuarioCreate(BaseModel):
+    nombre: str
+    email: str
     password: str
+    area_id: Optional[int] = None
 
     @field_validator('password')
     def validar_password_create(cls, v):

@@ -10,7 +10,7 @@ router = APIRouter()
 @router.post("/usuarios", response_model=UsuarioRead, status_code=status.HTTP_201_CREATED)
 def crear_usuario_endpoint(usuario: UsuarioCreate, db: Session = Depends(get_db)):
     try:
-        return crear_usuario(usuario, db) 
+        return crear_usuario(usuario, db)
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
