@@ -7,7 +7,7 @@ from app.core.security import obtener_usuario_actual
 from app.crud.crud_area import *
 
 router = APIRouter(
-    prefix='areas',
+    prefix='/areas',
     tags=['areas']
     )
 

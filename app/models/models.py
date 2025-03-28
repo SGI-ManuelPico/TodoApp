@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
 from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.sql import func
 
 Base = declarative_base()
 
@@ -32,7 +33,7 @@ class Todo(Base):
     
     def __repr__(self):
         return f"Todo(id={self.id}, descripcion='{self.descripcion}', prioridad={self.prioridad})"
-
+    
 class Area(Base):
     __tablename__ = 'area'
 
@@ -45,3 +46,19 @@ class Area(Base):
 
     # Relaciones
     usuarios = relationship('Usuario', back_populates='area')
+
+class Chat(Base):
+    __tablename__ = 'chat'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    sender_id = Column(Integer, ForeignKey('usuario.id'), nullable=False)
+    receiver_id = Column(Integer, ForeignKey('usuario.id'), nullable=False)
+    message = Column(String(500), nullable=False)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    sender = relationship('Usuario', foreign_keys=[sender_id])
+    receiver = relationship('Usuario', foreign_keys=[receiver_id])
+
+    def __repr__(self):
+        return f"Chat(id={self.id}, from={self.sender_id}, to={self.receiver_id})"

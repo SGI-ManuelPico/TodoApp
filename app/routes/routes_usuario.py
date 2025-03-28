@@ -11,6 +11,9 @@ router = APIRouter(
     prefix="/usuarios",
     tags=["usuarios"]  # This helps organize the API documentation
 )
+@router.get("/me", response_model=UsuarioRead)
+def get_current_user(usuario_actual: Usuario = Depends(obtener_usuario_actual)):
+    return usuario_actual
 
 @router.post("/", response_model=UsuarioRead, status_code=status.HTTP_201_CREATED)
 def crear_usuario_endpoint(usuario: UsuarioCreate, db: Session = Depends(get_db)):
@@ -62,7 +65,4 @@ async def login_para_access_token(
             detail=str(e)
         )
 
-@router.get("/me", response_model=UsuarioRead)
-def get_current_user(usuario_actual: Usuario = Depends(obtener_usuario_actual)):
-    return usuario_actual
 

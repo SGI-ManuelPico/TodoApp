@@ -47,12 +47,12 @@ def obtener_usuario_actual(token: str = Depends(oauth2_scheme), db: Session = De
     """
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        usuario_id: int | None = payload.get("sub")  # Allow None in type hint
+        email: str | None = payload.get("sub")  # Obtener el email del payload
 
-        if usuario_id is None:
+        if email is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="No se pudo validar las credenciales")
 
-        usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
+        usuario = db.query(Usuario).filter(Usuario.email == email).first()
 
         if usuario is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="No se pudo validar las credenciales")
@@ -82,7 +82,7 @@ def crear_token_para_usuario(usuario: Usuario) -> dict:
     """
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTOS)
     access_token = crear_token_acceso(
-        datos={"sub": str(usuario.id)}, 
+        datos={"sub": usuario.email}, 
         expires_delta=access_token_expires
     )
     return {
