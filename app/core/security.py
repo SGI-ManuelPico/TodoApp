@@ -12,7 +12,7 @@ from passlib.context import CryptContext
 SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTOS = 30
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="usuarios/login")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def hash_password(password: str) -> str:
@@ -71,7 +71,7 @@ def autenticar_usuario(db: Session, email: str, password: str) -> Optional[Usuar
     usuario = db.query(Usuario).filter(Usuario.email == email).first()
     if not usuario:
         return None
-    if not verificar_contraseña(password, str(usuario.password)):  # Convert to str
+    if not verificar_contraseña(password, str(usuario.password)): 
         return None
     return usuario
 
