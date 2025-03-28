@@ -16,3 +16,23 @@ def crear_usuario_endpoint(usuario: UsuarioCreate, db: Session = Depends(get_db)
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+
+@router.get("/usuarios/{usuario_id}", response_model=UsuarioRead)
+def get_usuario(usuario_id: int, db: Session = Depends(get_db)):
+    try:
+        return obtener_usuario(usuario_id, db)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+
+@router.put("/usuarios/{usuario_id}", response_model=UsuarioRead)
+def update_usuario_endpoint(usuario_id: int, usuario: UsuarioUpdate, db: Session = Depends(get_db)):
+    try:
+        return update_usuario(usuario_id, usuario, db) 
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)      
+        )
