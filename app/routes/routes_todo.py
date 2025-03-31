@@ -1,8 +1,6 @@
 from typing import List
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-
 from app.core.db import get_db
 from app.core.security import obtener_usuario_actual
 from app.schemas.todo import TodoCreate, TodoRead, TodoUpdate, Prioridad
