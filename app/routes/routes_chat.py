@@ -15,14 +15,15 @@ router = APIRouter(
 )
 
 @router.post("/", response_model=ChatRead)
-def send_message(
+def enviar_mensaje(
     chat: ChatCreate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(obtener_usuario_actual)
 ):
     """
-    Send a chat message to another user.
-    Users must be in the same area to chat.
+        Envía un mensaje entre dos usuarios.
+        Los usuarios deben estar en la misma área para enviar mensajes.
+        El remitente es el usuario actual.
     """
     try:
         return crud_chat.create_chat_message(db=db, chat=chat, sender_id=current_user.id)
@@ -32,34 +33,32 @@ def send_message(
             detail=str(e)
         )
     except Exception as e:
-        # Catch unexpected errors
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while sending the message."
+            detail="Ocurrió un error al enviar el mensaje."
         )
 
 
 @router.get("/{other_user_id}", response_model=List[ChatRead])
-def read_messages(
+def leer_mensajes(
     other_user_id: int,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(obtener_usuario_actual)
 ):
     """
-    Retrieve chat messages between the current user and another user.
+    Obtiene los mensajes entre el usuario actual y otro usuario.
+    Los usuarios deben estar en la misma área para ver los mensajes.
     """
     try:
-        # The crud function already checks if users are in the same area
         messages = crud_chat.get_chat_messages(db=db, user1_id=current_user.id, user2_id=other_user_id)
         return messages
-    except ValueError as e: # Catch specific errors from CRUD if needed (e.g., user not found)
+    except ValueError as e:
          raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, # Or 400 depending on the error
+            status_code=status.HTTP_404_NOT_FOUND, 
             detail=str(e)
         )
     except Exception as e:
-        # Catch unexpected errors
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while retrieving messages."
+            detail="Ocurrió un error al obtener los mensajes."
         )
