@@ -26,9 +26,10 @@ class Todo(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     descripcion = Column(String(50))
     prioridad = Column(Integer)
+    estado = Column(Integer, default=0) # 0: Incompleto, 1: Completo
     usuario_id = Column(Integer, ForeignKey('usuario.id'))
 
-    # Relaciones 
+    # Relaciones
     usuario = relationship('Usuario', back_populates='todos')
     
     def __repr__(self):
