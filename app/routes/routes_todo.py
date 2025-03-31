@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.core.security import obtener_usuario_actual
-from app.schemas.todo import TodoCreate, TodoRead, TodoUpdate, Prioridad # Importar Prioridad
+from app.schemas.todo import TodoCreate, TodoRead, TodoUpdate, Prioridad
 from app.schemas.usuario import UsuarioRead
 from app.crud import crud_todo
 from app.models.models import Usuario

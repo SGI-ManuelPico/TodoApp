@@ -9,7 +9,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 router = APIRouter(
     prefix="/usuarios",
-    tags=["usuarios"]  # This helps organize the API documentation
+    tags=["usuarios"] 
 )
 @router.get("/me", response_model=UsuarioRead)
 def get_current_user(usuario_actual: Usuario = Depends(obtener_usuario_actual)):

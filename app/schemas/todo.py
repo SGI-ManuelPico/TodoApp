@@ -14,8 +14,8 @@ class TodoBase(BaseModel):
     prioridad: Prioridad
     estado: int = Field(0, ge=0, le=1) # 0: Incompleto, 1: Completo
 
-class TodoCreate(TodoBase): # Heredar de TodoBase para incluir estado con default
-    pass # No necesita campos adicionales por ahora
+class TodoCreate(TodoBase):
+    pass 
 
 class TodoRead(TodoBase):
     id: int
@@ -26,4 +26,4 @@ class TodoRead(TodoBase):
 class TodoUpdate(BaseModel):
     descripcion: Optional[str] = Field(None, min_length=1, max_length=50)
     prioridad: Optional[Prioridad] = None
-    estado: Optional[int] = Field(None, ge=0, le=1) # Añadir estado opcional con validación
+    estado: Optional[int] = Field(None, ge=0, le=1)
