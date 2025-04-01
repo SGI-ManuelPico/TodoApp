@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Generator
-from sqlalchemy import create_engine, text  # Added text import
+from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker, Session
 from functools import lru_cache
@@ -39,7 +39,6 @@ class Database:
         """
         return self.SessionLocal()
 
-# Move get_database() here, after Database class
 @lru_cache
 def get_database() -> Database:
     return Database(
