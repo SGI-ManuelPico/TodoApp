@@ -12,6 +12,7 @@ from passlib.context import CryptContext
 SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTOS = 30
+REFRESH_TOKEN_EXPIRE_MINUTOS = 300  # 5 horas
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="usuarios/login")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -38,6 +39,20 @@ def crear_token_acceso(datos: dict, expires_delta: Optional[timedelta] = None) -
     else:
         expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTOS)
     to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+def crear_token_refresco(datos: dict, expires_delta: Optional[timedelta] = None) -> str:
+    """
+    Crea un token de refresco JWT con los datos proporcionados y una duración de expiración opcional.
+    Por defecto, expira en REFRESH_TOKEN_EXPIRE_MINUTOS.
+    """
+    to_encode = datos.copy()
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=REFRESH_TOKEN_EXPIRE_MINUTOS)
+    to_encode.update({"exp": expire, "tipo": "refresco"}) # Añadir tipo para diferenciar
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
@@ -78,14 +93,25 @@ def autenticar_usuario(db: Session, email: str, password: str) -> Optional[Usuar
 def crear_token_para_usuario(usuario: Usuario) -> dict:
     """
     Crea un token de acceso para un usuario específico.
-    Retorna un diccionario con el token y su tipo.
+    Crea un token de acceso y un token de refresco para un usuario específico.
+    Retorna un diccionario con ambos tokens y su tipo.
     """
+    # Crear token de acceso
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTOS)
     access_token = crear_token_acceso(
-        datos={"sub": usuario.email}, 
+        datos={"sub": usuario.email, "tipo": "acceso"}, # Añadir tipo para diferenciar
         expires_delta=access_token_expires
     )
+
+    # Crear token de refresco
+    refresh_token_expires = timedelta(minutes=REFRESH_TOKEN_EXPIRE_MINUTOS)
+    refresh_token = crear_token_refresco(
+        datos={"sub": usuario.email}, # Solo necesita el identificador
+        expires_delta=refresh_token_expires
+    )
+
     return {
         "access_token": access_token,
+        "refresh_token": refresh_token,
         "token_type": "bearer"
     }

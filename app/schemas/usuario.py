@@ -33,3 +33,5 @@ class UsuarioRead(UsuarioBase):
     class Config:
         from_attributes = True
 
+class TokenRefreshRequest(BaseModel):
+    refresh_token: str

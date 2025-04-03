@@ -1,11 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.orm import Session
 from app.core.db import get_db
 from app.models.models import Usuario
-from app.schemas.usuario import UsuarioCreate, UsuarioUpdate, UsuarioRead
+from app.schemas.usuario import UsuarioCreate, UsuarioUpdate, UsuarioRead, TokenRefreshRequest
 from app.crud.crud_usuario import *
 from app.core.security import *
 from fastapi.security import OAuth2PasswordRequestForm
+from jose import jwt, JWTError
+from datetime import timedelta
 
 router = APIRouter(
     prefix="/usuarios",
@@ -65,4 +67,47 @@ async def login_para_access_token(
             detail=str(e)
         )
 
+@router.post("/refresh", response_model=dict)
+async def refrescar_token_acceso(
+    refresh_request: TokenRefreshRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Refresca el token de acceso utilizando un token de refresco válido.
+    """
+    token_refresco = refresh_request.refresh_token
+    try:
+        payload = jwt.decode(token_refresco, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str | None = payload.get("sub")
+        token_type: str | None = payload.get("tipo")
 
+        if email is None or token_type != "refresco":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token de refresco inválido o caducado",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        # Verificar si el usuario existe (opcional pero recomendado)
+        usuario = db.query(Usuario).filter(Usuario.email == email).first()
+        if usuario is None:
+             raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Usuario no encontrado",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        # Crear un nuevo token de acceso
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTOS)
+        nuevo_access_token = crear_token_acceso(
+            datos={"sub": usuario.email, "tipo": "acceso"},
+            expires_delta=access_token_expires
+        )
+        return {"access_token": nuevo_access_token, "token_type": "bearer"}
+
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token de refresco inválido o caducado",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
