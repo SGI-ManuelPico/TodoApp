@@ -10,6 +10,7 @@ class Usuario(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     email = Column(String(50), unique=True, index=True)
     nombre = Column(String(50))
+    genero = Column(String(10))
     password = Column(String(100))
     area_id = Column(Integer, ForeignKey('area.id'))
 

@@ -7,6 +7,9 @@ class ChatBase(BaseModel):
 class ChatCreate(ChatBase):
     receiver_id: int
 
+class ChatUpdate(ChatBase):
+    pass
+
 class ChatRead(ChatBase):
     id: int
     sender_id: int

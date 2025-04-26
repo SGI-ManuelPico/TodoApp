@@ -43,3 +43,18 @@ def get_chat_messages(db: Session, user1_id: int, user2_id: int):
         )
     ).order_by(Chat.timestamp.asc()).all()
     return messages
+
+def editar_mensaje(db: Session, chat_id: int, message: str):
+    chat = db.query(Chat).filter(Chat.id == chat_id).first()
+    if not chat:
+        raise ValueError("Mensaje no encontrado")
+    chat.message = message
+    db.commit()
+    return chat
+
+def eliminar_mensaje(db: Session, chat_id: int):
+    chat = db.query(Chat).filter(Chat.id == chat_id).first()
+    if not chat:
+        raise ValueError("Mensaje no encontrado")
+    db.delete(chat)
+    db.commit()

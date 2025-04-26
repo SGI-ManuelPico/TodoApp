@@ -1,15 +1,23 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import List, Optional
 from app.utils.validaciones import validar_contraseña
+from enum import Enum
+
+
+class Genero(str, Enum):
+    MASCULINO = "Masculino"
+    FEMENINO = "Femenino"
 
 class UsuarioBase(BaseModel):
     nombre: str = Field(..., min_length=2, max_length=50)
     email: EmailStr
+    genero: Genero
     area_id: int
 
 class UsuarioCreate(BaseModel):
     nombre: str
     email: str
+    genero: Genero
     password: str
     area_id: Optional[int] = None
 

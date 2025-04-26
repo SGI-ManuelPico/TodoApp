@@ -62,3 +62,34 @@ def leer_mensajes(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Ocurrió un error al obtener los mensajes."
         )
+
+@router.put("/{chat_id}", response_model=ChatRead)
+def editar_mensaje_endpoint(chat_id: int, message: str, db: Session = Depends(get_db), current_user: Usuario = Depends(obtener_usuario_actual)):
+    try:
+        return crud_chat.editar_mensaje(db=db, chat_id=chat_id, message=message)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ocurrió un error al editar el mensaje."
+        )
+    
+@router.delete("/{chat_id}", status_code=status.HTTP_200_OK)
+def eliminar_mensaje_endpoint(chat_id: int, db: Session = Depends(get_db), current_user: Usuario = Depends(obtener_usuario_actual)):
+    try:
+        crud_chat.eliminar_mensaje(db=db, chat_id=chat_id)
+        return {"detail": "Mensaje eliminado correctamente"}
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ocurrió un error al eliminar el mensaje."
+        )
