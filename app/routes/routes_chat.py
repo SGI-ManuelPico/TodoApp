@@ -65,6 +65,10 @@ def leer_mensajes(
 
 @router.put("/{chat_id}", response_model=ChatRead)
 def editar_mensaje_endpoint(chat_id: int, message: str, db: Session = Depends(get_db), current_user: Usuario = Depends(obtener_usuario_actual)):
+    """
+    Edita un mensaje previamente enviado.
+    Sólo el remitente del mensaje puede editar el mensaje.
+    """
     try:
         return crud_chat.editar_mensaje(db=db, chat_id=chat_id, message=message)
     except ValueError as e:
@@ -80,6 +84,10 @@ def editar_mensaje_endpoint(chat_id: int, message: str, db: Session = Depends(ge
     
 @router.delete("/{chat_id}", status_code=status.HTTP_200_OK)
 def eliminar_mensaje_endpoint(chat_id: int, db: Session = Depends(get_db), current_user: Usuario = Depends(obtener_usuario_actual)):
+    """
+    Elimina un mensaje previamente enviado.
+    Sólo el remitente del mensaje puede eliminar el mensaje.
+    """
     try:
         crud_chat.eliminar_mensaje(db=db, chat_id=chat_id)
         return {"detail": "Mensaje eliminado correctamente"}
