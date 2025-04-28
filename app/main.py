@@ -1,13 +1,16 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from app.routes import routes_usuario, routes_area, routes_chat, routes_todo
 
 app = FastAPI()
 
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
 # Configuración de CORS
 origins = [
     "http://localhost",
-    "http://localhost:3000", # Puerto común para React
+    "http://localhost:3000",
     "http://127.0.0.1",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:8080",
@@ -18,10 +21,10 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins, # Orígenes permitidos
-    allow_credentials=True, # Permitir cookies
-    allow_methods=["*"],    # Permitir todos los métodos (GET, POST, etc.)
-    allow_headers=["*"],    # Permitir todas las cabeceras
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(routes_usuario.router)

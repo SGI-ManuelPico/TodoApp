@@ -2,4 +2,5 @@ fastapi[standard]
 alembic
 python-jose[cryptography]
 passlib[bcrypt]
-mysql-connector-python
+aiomysql
+sqlalchemy[asyncio]
