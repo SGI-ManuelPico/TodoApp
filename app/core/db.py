@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.engine import Engine
+from sqlalchemy.pool import AsyncAdaptedQueuePool
 from functools import lru_cache
 from dotenv import load_dotenv
 import os
@@ -23,15 +24,28 @@ class Database:
             connection_url = (
                 f"mysql+aiomysql://{self.user}:{self.password}@{self.host}/{self.database}"
             )
-            self.engine = create_async_engine(connection_url, echo=self.echo, pool_pre_ping=True)
+            self.engine = create_async_engine(
+                connection_url,
+                echo=self.echo,
+                poolclass=AsyncAdaptedQueuePool,
+                pool_pre_ping=True,
+                pool_recycle=3600,
+                pool_size=20,
+                max_overflow=10,
+                pool_timeout=30,
+                connect_args={
+                    "connect_timeout": 10,
+                }
+            )
             self.SessionLocal = async_sessionmaker(
                 autocommit=False,
                 autoflush=False,
                 bind=self.engine,
-                class_=AsyncSession
+                class_=AsyncSession,
+                expire_on_commit=False
             )
         except Exception as e:
-            raise Exception(f"La conexión a la base de datos falló: {str(e)}")
+            raise Exception(f"La conexion a la base de datos falló: {str(e)}")
 
     async def get_session(self) -> AsyncSession:
         """
@@ -39,7 +53,6 @@ class Database:
         """
         return self.SessionLocal()
 
-##! Falta ver como implementar el pooling de conexiones
 @lru_cache
 def get_database() -> Database:
     return Database(

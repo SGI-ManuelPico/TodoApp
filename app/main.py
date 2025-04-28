@@ -1,10 +1,20 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from app.routes import routes_usuario, routes_area, routes_chat, routes_todo
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    yield
+    # Shutdown
+    if hasattr(app.state, "db"):
+        await app.state.db.engine.dispose()
 
+app = FastAPI(lifespan=lifespan)
+
+# Add Gzip compression
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Configuración de CORS
