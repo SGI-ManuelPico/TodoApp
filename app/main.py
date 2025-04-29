@@ -45,10 +45,9 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# Add Gzip compression
+
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
-# Add rate limiting
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
