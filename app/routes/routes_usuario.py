@@ -1,13 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Body
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_db
 from app.models.models import Usuario
 from app.schemas.usuario import UsuarioCreate, UsuarioUpdate, UsuarioRead, TokenRefreshRequest, Token
 from app.crud.crud_usuario import *
 from app.core.security import *
-from fastapi.security import OAuth2PasswordRequestForm
-from jose import jwt, JWTError
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from datetime import timedelta
+from app.core.limiter import limiter
 
 router = APIRouter(
     prefix="/usuarios",
@@ -75,81 +75,105 @@ async def update_usuario_endpoint(usuario_id: int, usuario: UsuarioUpdate, db: A
         )
 
 @router.post("/login", response_model=Token)
+@limiter.limit("5/minute")
 async def login_para_access_token(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    auth_service: AuthService = Depends(get_auth_service)
 ):
     """
-    Autentica un usuario utilizando un formulario de inicio de sesión y devuelve un token de acceso JWT.
+    Autentica un usuario utilizando un formulario de inicio de sesión y devuelve tokens JWT.
+    Rate limit: 5 intentos por minuto por dirección IP.
     
     Args:
     - form_data (OAuth2PasswordRequestForm): Formulario de inicio de sesión.
     - db (AsyncSession): Sesión de la base de datos.
+    - auth_service (AuthService): Servicio de autenticación.
     
     Returns:
-    - dict: Diccionario con el token de acceso JWT.
+    - Token: Token de acceso y refresco JWT.
     
     Raises:
     - HTTPException: 401 si el usuario no existe o la contraseña es incorrecta.
-    - HTTPException: 400 si ocurre un error en la autenticación.
+    - HTTPException: 429 si se excede el límite de intentos.
     """
     try:
-        usuario = await autenticar_usuario(db, form_data.username, form_data.password)
-        if not usuario:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Usuario o contraseña incorrectos",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        return crear_token_para_usuario(usuario)
-    except ValueError as e:
+        usuario = await auth_service.authenticate_user(form_data.username, form_data.password)
+        return await auth_service.create_tokens_for_user(usuario)
+    except InvalidCredentialsError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e),
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
 
-@router.post("/refresh", response_model=dict)
+@router.post("/refresh", response_model=Token)
+@limiter.limit("10/minute")
 async def refrescar_token_acceso(
+    request: Request,
     refresh_request: TokenRefreshRequest,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    auth_service: AuthService = Depends(get_auth_service)
 ):
     """
     Refresca el token de acceso utilizando un token de refresco válido.
+    Rate limit: 10 intentos por minuto por dirección IP.
     """
-    token_refresco = refresh_request.refresh_token
     try:
-        payload = jwt.decode(token_refresco, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str | None = payload.get("sub")
-        token_type: str | None = payload.get("tipo")
+        payload = await auth_service.token_manager.verify_token(refresh_request.refresh_token, db)
+        if payload.type != "refresh":
+            raise InvalidCredentialsError("Invalid refresh token type")
 
-        if email is None or token_type != "refresco":
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token de refresco inválido o caducado",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+        user = await auth_service._get_user_by_email(email=payload.sub)
+        if not user:
+            raise InvalidCredentialsError("User not found")
 
-        # Verificar si el usuario existe
-        result = await db.execute(select(Usuario).filter(Usuario.email == email))
-        usuario = result.scalar_one_or_none()
-        if usuario is None:
-             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Usuario no encontrado",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+        return await auth_service.create_tokens_for_user(user)
 
-        # Crear un nuevo token de acceso
-        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTOS)
-        nuevo_access_token = crear_token_acceso(
-            datos={"sub": usuario.email, "tipo": "acceso"},
-            expires_delta=access_token_expires
-        )
-        return {"access_token": nuevo_access_token, "token_type": "bearer"}
-
-    except JWTError:
+    except AuthenticationError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token de refresco inválido o caducado",
+            detail=str(e),
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+@router.post("/logout", status_code=status.HTTP_200_OK)
+@limiter.limit("10/minute")
+async def logout_endpoint(
+    request: Request,
+    current_user: Usuario = Depends(obtener_usuario_actual),
+    auth_service: AuthService = Depends(get_auth_service),
+    token: str = Depends(oauth2_scheme)
+):
+    """
+    Cierra la sesión del usuario actual invalidando sus tokens.
+    Rate limit: 10 intentos por minuto por dirección IP.
+
+    Args:
+    - current_user (Usuario): Usuario autenticado actual.
+    - auth_service (AuthService): Servicio de autenticación.
+    - token (str): Token de acceso actual.
+
+    Returns:
+    - dict: Mensaje de confirmación.
+
+    Raises:
+    - HTTPException: 401 si el token es inválido.
+    """
+    try:
+        # Llama al método logout simplificado, pasando solo el token de acceso
+        await auth_service.logout(token) 
+        return {"detail": "Sesión cerrada correctamente"}
+    except AuthenticationError as e:
+        # Captura errores de autenticación (ej. token inválido, ya revocado)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e),
             headers={"WWW-Authenticate": "Bearer"},
         )

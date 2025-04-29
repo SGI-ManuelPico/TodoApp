@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Index
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.sql import func
 
@@ -64,3 +64,17 @@ class Chat(Base):
 
     def __repr__(self):
         return f"Chat(id={self.id}, from={self.sender_id}, to={self.receiver_id})"
+
+class BlacklistedToken(Base):
+    __tablename__ = 'blacklisted_tokens'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    token = Column(String(500), nullable=False)
+    blacklisted_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+
+    def __repr__(self):
+        return f"BlacklistedToken(id={self.id}, blacklisted_at='{self.blacklisted_at}')"
+
+    # Create an index on token for faster lookups
+    __table_args__ = (Index('idx_token', 'token'),)
