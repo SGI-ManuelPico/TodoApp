@@ -99,7 +99,9 @@ async def login_para_access_token(
     - HTTPException: 429 si se excede el límite de intentos.
     """
     try:
+        # Autenticar al usuario (esto sí es async)
         usuario = await auth_service.authenticate_user(form_data.username, form_data.password)
+        # Crear tokens (esto SÍ es async y necesita await)
         return await auth_service.create_tokens_for_user(usuario)
     except InvalidCredentialsError as e:
         raise HTTPException(
@@ -133,7 +135,8 @@ async def refrescar_token_acceso(
         user = await auth_service._get_user_by_email(email=payload.sub)
         if not user:
             raise InvalidCredentialsError("User not found")
-
+        
+        # Crear tokens (esto SÍ es async y necesita await)
         return await auth_service.create_tokens_for_user(user)
 
     except AuthenticationError as e:
