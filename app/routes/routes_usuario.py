@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_db
 from app.models.models import Usuario
-from app.schemas.usuario import UsuarioCreate, UsuarioUpdate, UsuarioRead, TokenRefreshRequest
+from app.schemas.usuario import UsuarioCreate, UsuarioUpdate, UsuarioRead, TokenRefreshRequest, Token
 from app.crud.crud_usuario import *
 from app.core.security import *
 from fastapi.security import OAuth2PasswordRequestForm
@@ -74,7 +74,7 @@ async def update_usuario_endpoint(usuario_id: int, usuario: UsuarioUpdate, db: A
             detail=str(e)      
         )
 
-@router.post("/login", response_model=dict)
+@router.post("/login", response_model=Token)
 async def login_para_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db)

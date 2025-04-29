@@ -43,3 +43,8 @@ class UsuarioRead(UsuarioBase):
 
 class TokenRefreshRequest(BaseModel):
     refresh_token: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+    refresh_token: str | None = None
