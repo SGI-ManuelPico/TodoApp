@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_db
 from app.models.models import Area, Usuario
 from app.schemas.area import AreaCreate, AreaRead, AreaUpdate
-from app.core.security import obtener_usuario_actual
+from app.core.security import obtener_usuario_actual, reintentar_operacion
 from app.crud.crud_area import *
 
 router = APIRouter(
@@ -30,7 +30,7 @@ async def crear_area_endpoint(
     """
 
     try:
-        return await crear_area(area, db)
+        return await reintentar_operacion(lambda: crear_area(area, db))
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -60,14 +60,14 @@ async def actualizar_area_endpoint(
         HTTPException: Si el Area no existe o si ocurre un error al actualizar.
     """
 
-    area = await obtener_area(area_id, db)
+    area = await reintentar_operacion(lambda: obtener_area(area_id, db))
     if not area:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Area no encontrada"
         )
     try:
-        return await actualizar_area(area, area_update, db)
+        return await reintentar_operacion(lambda: actualizar_area(area, area_update, db))
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -89,5 +89,5 @@ async def obtener_areas_endpoint(
     Returns:
         list[AreaRead]: Lista de áreas existentes.
     """
-    result = await db.execute(select(Area))
+    result = await reintentar_operacion(lambda: db.execute(select(Area)))
     return result.scalars().all()

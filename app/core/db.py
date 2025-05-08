@@ -29,9 +29,9 @@ class Database:
                 echo=self.echo,
                 poolclass=AsyncAdaptedQueuePool,
                 pool_pre_ping=True,
-                pool_recycle=3600,
-                pool_size=20,
-                max_overflow=10,
+                pool_recycle=900,
+                pool_size=10,
+                max_overflow=5,
                 pool_timeout=30,
                 connect_args={
                     "connect_timeout": 10,

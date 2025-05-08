@@ -5,7 +5,7 @@ from typing import List
 from app.core.db import get_db
 from app.models.models import Usuario
 from app.schemas.chat import ChatCreate, ChatRead
-from app.core.security import obtener_usuario_actual
+from app.core.security import obtener_usuario_actual, reintentar_operacion
 from app.crud import crud_chat
 
 router = APIRouter(
@@ -26,7 +26,9 @@ async def enviar_mensaje(
     El remitente es el usuario actual.
     """
     try:
-        return await crud_chat.create_chat_message(db=db, chat=chat, sender_id=current_user.id)
+        return await reintentar_operacion(
+            lambda: crud_chat.create_chat_message(db=db, chat=chat, sender_id=current_user.id)
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -49,7 +51,9 @@ async def leer_mensajes(
     Los usuarios deben estar en la misma área para ver los mensajes.
     """
     try:
-        messages = await crud_chat.get_chat_messages(db=db, user1_id=current_user.id, user2_id=other_user_id)
+        messages = await reintentar_operacion(
+            lambda: crud_chat.get_chat_messages(db=db, user1_id=current_user.id, user2_id=other_user_id)
+        )
         return messages
     except ValueError as e:
          raise HTTPException(
@@ -74,7 +78,9 @@ async def editar_mensaje_endpoint(
     Sólo el remitente del mensaje puede editar el mensaje.
     """
     try:
-        return await crud_chat.editar_mensaje(db=db, chat_id=chat_id, message=message)
+        return await reintentar_operacion(
+            lambda: crud_chat.editar_mensaje(db=db, chat_id=chat_id, message=message)
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -97,7 +103,9 @@ async def eliminar_mensaje_endpoint(
     Sólo el remitente del mensaje puede eliminar el mensaje.
     """
     try:
-        await crud_chat.eliminar_mensaje(db=db, chat_id=chat_id)
+        await reintentar_operacion(
+            lambda: crud_chat.eliminar_mensaje(db=db, chat_id=chat_id)
+        )
         return {"detail": "Mensaje eliminado correctamente"}
     except ValueError as e:
         raise HTTPException(

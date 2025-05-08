@@ -14,6 +14,7 @@ from passlib.context import CryptContext
 import asyncio
 import os
 from dotenv import load_dotenv
+import random
 load_dotenv()
 
 # Actualizar la configuración de CryptContext para la última versión de bcrypt
@@ -222,16 +223,38 @@ async def get_auth_service(db: AsyncSession = Depends(get_db)) -> AuthService:
     return AuthService(token_manager, password_manager, db)
 
 # Utility Functions
-async def retry_operation(operation: Callable[[], Any], max_retries: int = 3, delay: float = 0.1):
-    """Retry an async database operation with exponential backoff."""
+async def reintentar_operacion(operation: Callable[[], Any], max_retries: int = 3, delay: float = 0.1):
+    """
+        Esta función reintenta operaciones de base de datos asíncronas con un backoff exponencial.
+    
+    Args:
+        operation: La operación asíncrona a ejecutar y posiblemente reintentar
+        max_retries: El número máximo de intentos de reintento
+        delay: Retardo base entre reintentos (crecerá exponencialmente)
+        
+    Returns:
+        El resultado de la operación si es exitosa
+        
+    Raises:
+        El último error encontrado si todos los reintentos fallan
+    """
     last_error = None
     for attempt in range(max_retries):
         try:
             return await operation()
-        except OperationalError as e:
+        except (OperationalError, RuntimeError) as e:
             last_error = e
+            # Check for TCP transport closed errors
+            if isinstance(e, RuntimeError) and "TCPTransport closed" not in str(e):
+                # Only retry specific RuntimeErrors
+                raise e
+                
             if attempt < max_retries - 1:
-                await asyncio.sleep(delay * (2 ** attempt))
+                # Exponential backoff with some randomness (jitter)
+                jitter = random.uniform(0.8, 1.2)
+                backoff_time = delay * (2 ** attempt) * jitter
+                print(f"Reintentando operación después de error: {e}. Intento {attempt+1}/{max_retries}. Esperando {backoff_time:.2f}s")
+                await asyncio.sleep(backoff_time)
             continue
     raise last_error
 

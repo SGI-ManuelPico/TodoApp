@@ -28,7 +28,7 @@ async def crear_usuario_endpoint(usuario: UsuarioCreate, db: AsyncSession = Depe
     """
     
     try:
-        return await crear_usuario(usuario, db)
+        return await reintentar_operacion(lambda: crear_usuario(usuario, db))
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -47,7 +47,7 @@ async def get_usuario(usuario_id: int, db: AsyncSession = Depends(get_db)):
     - HTTPException: 404 si el usuario no existe.
     """
     try:
-        return await obtener_usuario(usuario_id, db)
+        return await reintentar_operacion(lambda: obtener_usuario(usuario_id, db))
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -67,7 +67,7 @@ async def update_usuario_endpoint(usuario_id: int, usuario: UsuarioUpdate, db: A
         HTTPException: 404 si el usuario no existe.
     """
     try:
-        return await update_usuario(usuario_id, usuario, db) 
+        return await reintentar_operacion(lambda: update_usuario(usuario_id, usuario, db))
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -99,10 +99,14 @@ async def login_para_access_token(
     - HTTPException: 429 si se excede el límite de intentos.
     """
     try:
-        # Autenticar al usuario (esto sí es async)
-        usuario = await auth_service.authenticate_user(form_data.username, form_data.password)
-        # Crear tokens (esto SÍ es async y necesita await)
-        return await auth_service.create_tokens_for_user(usuario)
+        # Autenticar al usuario con retry para manejar errores de conexión
+        usuario = await reintentar_operacion(
+            lambda: auth_service.authenticate_user(form_data.username, form_data.password)
+        )
+        # Crear tokens con retry para manejar errores de conexión
+        return await reintentar_operacion(
+            lambda: auth_service.create_tokens_for_user(usuario)
+        )
     except InvalidCredentialsError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -128,16 +132,22 @@ async def refrescar_token_acceso(
     Rate limit: 10 intentos por minuto por dirección IP.
     """
     try:
-        payload = await auth_service.token_manager.verify_token(refresh_request.refresh_token, db)
+        payload = await reintentar_operacion(
+            lambda: auth_service.token_manager.verify_token(refresh_request.refresh_token, db)
+        )
         if payload.type != "refresh":
             raise InvalidCredentialsError("Invalid refresh token type")
 
-        user = await auth_service._get_user_by_email(email=payload.sub)
+        user = await reintentar_operacion(
+            lambda: auth_service._get_user_by_email(email=payload.sub)
+        )
         if not user:
             raise InvalidCredentialsError("User not found")
         
-        # Crear tokens (esto SÍ es async y necesita await)
-        return await auth_service.create_tokens_for_user(user)
+        # Crear tokens con retry para manejar errores de conexión
+        return await reintentar_operacion(
+            lambda: auth_service.create_tokens_for_user(user)
+        )
 
     except AuthenticationError as e:
         raise HTTPException(
@@ -170,8 +180,8 @@ async def logout_endpoint(
     - HTTPException: 401 si el token es inválido.
     """
     try:
-        # Llama al método logout simplificado, pasando solo el token de acceso
-        await auth_service.logout(token) 
+        # Llama al método logout simplificado con retry para manejar errores de conexión
+        await reintentar_operacion(lambda: auth_service.logout(token))
         return {"detail": "Sesión cerrada correctamente"}
     except AuthenticationError as e:
         # Captura errores de autenticación (ej. token inválido, ya revocado)
