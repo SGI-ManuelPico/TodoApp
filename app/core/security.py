@@ -37,7 +37,7 @@ class Settings(BaseModel):
 settings = Settings()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="usuarios/login")
 
-# Custom Exceptions
+# Excepciones personalizadas
 class AuthenticationError(Exception):
     """Base para todas las excepciones de autenticación"""
     pass
@@ -50,7 +50,7 @@ class TokenExpiredError(AuthenticationError):
     """Token ha expirado"""
     pass
 
-# Token Types and Payload Schema
+# Tipos de Tokens y Schema de Payload
 TokenType = Literal["access", "refresh"]
 UserT = TypeVar("UserT", bound=Usuario)
 
@@ -72,7 +72,7 @@ class TokenPayload(BaseModel):
             return datetime.fromtimestamp(v, tz=timezone.utc)
         return v
 
-# Password Management
+# Gestión de contraseñas
 class PasswordManager:
     def __init__(self, context: CryptContext):
         self.context = context
@@ -83,7 +83,7 @@ class PasswordManager:
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
         return self.context.verify(plain_password, hashed_password)
 
-# Token Blacklist
+# Lista negra de tokens
 class TokenBlacklist:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -156,7 +156,7 @@ class TokenManager:
         except JWTError:
             raise InvalidCredentialsError("Token invalido")
 
-# Authentication Service
+# Servicio de autenticación
 class AuthService:
     def __init__(
         self,
@@ -204,25 +204,25 @@ class AuthService:
 
     async def logout(self, access_token: str):
         """Blacklist the access token"""
-        # Verify access token and get payload to determine expiration for blacklist entry
+        # Verificar el token de acceso y obtener el payload para determinar la expiración para la entrada de la blacklist
         payload = await self.token_manager.verify_token(access_token, self.db)
-        # Use the exp attribute directly as it's already a datetime object
+        # Usar el atributo exp directamente como ya es un objeto datetime
         await self.blacklist.blacklist_token(access_token, payload.exp)
 
-        # Cleanup expired tokens periodically (can still be useful)
+        # Limpiar tokens expirados periódicamente (puede ser útil)
         await self.blacklist.cleanup_expired_tokens()
 
     async def _get_user_by_email(self, email: str) -> Optional[Usuario]:
         result = await self.db.execute(select(Usuario).filter(Usuario.email == email))
         return result.scalar_one_or_none()
 
-# Dependency Injection
+# Inyección de dependencias
 async def get_auth_service(db: AsyncSession = Depends(get_db)) -> AuthService:
     token_manager = TokenManager(settings.SECRET_KEY, settings.ALGORITHM)
     password_manager = PasswordManager(pwd_context)
     return AuthService(token_manager, password_manager, db)
 
-# Utility Functions
+# Funciones de utilidad
 async def reintentar_operacion(operation: Callable[[], Any], max_retries: int = 3, delay: float = 0.1):
     """
         Esta función reintenta operaciones de base de datos asíncronas con un backoff exponencial.
@@ -244,13 +244,13 @@ async def reintentar_operacion(operation: Callable[[], Any], max_retries: int = 
             return await operation()
         except (OperationalError, RuntimeError) as e:
             last_error = e
-            # Check for TCP transport closed errors
+            # Verificar errores de transporte TCP cerrado
             if isinstance(e, RuntimeError) and "TCPTransport closed" not in str(e):
-                # Only retry specific RuntimeErrors
+                # Solo reintentar errores específicos de RuntimeError
                 raise e
                 
             if attempt < max_retries - 1:
-                # Exponential backoff with some randomness (jitter)
+                # Backoff exponencial con algo de aleatoriedad (jitter)
                 jitter = random.uniform(0.8, 1.2)
                 backoff_time = delay * (2 ** attempt) * jitter
                 print(f"Reintentando operación después de error: {e}. Intento {attempt+1}/{max_retries}. Esperando {backoff_time:.2f}s")
@@ -258,14 +258,14 @@ async def reintentar_operacion(operation: Callable[[], Any], max_retries: int = 
             continue
     raise last_error
 
-# Legacy function names for backward compatibility
+# Funciones de hash de contraseña para compatibilidad con versiones anteriores
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
 def verificar_contraseña(contraseña: str, contraseña_encriptada: str) -> bool:
     return pwd_context.verify(contraseña, contraseña_encriptada)
 
-# JWT Token Functions
+# Funciones de tokens JWT
 def crear_token_acceso(datos: dict, expires_delta: Optional[timedelta] = None) -> str:
     token_manager = TokenManager(settings.SECRET_KEY, settings.ALGORITHM)
     token, _ = token_manager.create_token(
@@ -284,7 +284,7 @@ def crear_token_refresco(datos: dict, expires_delta: Optional[timedelta] = None)
     )
     return token
 
-# Current User Dependency
+# Dependencia de usuario actual
 async def obtener_usuario_actual(
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
@@ -310,7 +310,7 @@ async def obtener_usuario_actual(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-# Authentication Functions
+# Funciones de autenticación
 async def autenticar_usuario(
     db: AsyncSession,
     email: str,
